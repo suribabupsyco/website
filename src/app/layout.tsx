@@ -26,7 +26,6 @@ export const metadata: Metadata = {
   publisher: siteConfig.businessName,
   alternates: { canonical: "/" },
   category: "Counselling and professional services",
-  icons: { icon: "/favicon.ico" },
   openGraph: {
     type: "website",
     locale: "en_IN",
