@@ -203,8 +203,13 @@ export async function createCentreRecord(collection: CentreCollection, input: un
     const store = await readCentreStore();
     const records = store[collection] as CentreRecord[];
     const sourceSubmissionId = String(cleaned.sourceSubmissionId || "");
-    if (sourceSubmissionId && ["clients", "leads", "appointments", "followUps", "communications"].includes(collection)) {
+    const sourceCommunicationId = String(cleaned.sourceCommunicationId || "");
+    if (sourceSubmissionId && ["clients", "leads", "appointments", "followUps"].includes(collection)) {
       const existing = records.find((item) => String((item as unknown as Record<string, unknown>).sourceSubmissionId || "") === sourceSubmissionId);
+      if (existing) return existing;
+    }
+    if (collection === "communications" && sourceCommunicationId) {
+      const existing = records.find((item) => String((item as unknown as Record<string, unknown>).sourceCommunicationId || "") === sourceCommunicationId);
       if (existing) return existing;
     }
     const now = new Date().toISOString();

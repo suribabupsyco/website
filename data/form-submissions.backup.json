@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-06T14:55:55.286Z",
+  "updatedAt": "2026-09-06T15:40:39.481Z",
   "submissions": [
     {
       "id": "1183cb81-5837-48b1-8ea8-afe1eb628b23",
@@ -29,7 +29,7 @@
       "formName": "Appointment Form",
       "subject": "[Appointment Form] New Counselling Appointment - Chetana Website",
       "submittedAt": "2026-09-06T02:53:20.926Z",
-      "updatedAt": "2026-09-06T14:48:25.590Z",
+      "updatedAt": "2026-09-06T06:02:51.469Z",
       "status": "scheduled",
       "adminNotes": "",
       "sourcePath": "/book-session",
@@ -49,55 +49,74 @@
         "consent": true
       },
       "workflow": {
+        "centreLeadId": "bcd44c2b-6971-4be8-b2b7-7590f7226923",
+        "centreLeadCode": "LEAD-0001",
         "scheduledDate": "2026-09-06",
         "scheduledTime": "13:28",
         "scheduledMode": "In-person",
         "nextActionDate": "",
-        "centreLeadId": "bcd44c2b-6971-4be8-b2b7-7590f7226923",
-        "centreLeadCode": "LEAD-0001",
         "centreClientId": "04b87072-deaa-48ce-aeee-c0f40bcf375a",
         "centreClientCode": "CHT-0002",
         "appointmentId": "5bfea385-7b26-4019-aa03-97fc9c3b638e",
-        "promotedAt": "2026-09-06T14:48:25.586Z"
+        "promotedAt": "2026-09-06T06:02:51.466Z"
       }
     },
     {
-      "id": "6597d7c4-39dc-4a62-95ed-74db03b7c2ae",
-      "clientSubmissionId": "97ce8f59-aae9-463c-89d6-def605b4d2a6",
+      "id": "b97ddb5a-423a-42f0-8f08-07167fbfb3bc",
+      "clientSubmissionId": "b468d46e-4f29-45c6-9ad6-b4664fc25fa0",
       "formType": "appointment",
       "formName": "Appointment Form",
       "subject": "[Appointment Form] New Counselling Appointment - Chetana Website",
-      "submittedAt": "2026-09-06T14:50:33.235Z",
-      "updatedAt": "2026-09-06T14:55:55.286Z",
-      "status": "contacted",
+      "submittedAt": "2026-09-06T15:38:22.175Z",
+      "updatedAt": "2026-09-06T15:40:39.481Z",
+      "status": "new",
       "adminNotes": "",
       "sourcePath": "/book-session",
       "data": {
-        "fullName": "Venky",
+        "fullName": "venky",
         "phone": "9381690958",
         "email": "venky200364@gmail.com",
-        "age": "21",
+        "age": "23",
         "gender": "male",
         "counsellingFor": "individual-counselling",
         "preferredLanguage": "english",
         "preferredSessionType": "in-person",
-        "preferredDate": "2026-09-07",
-        "preferredTime": "20:20",
-        "cityLocation": "Anakapalli",
+        "preferredDate": "2026-09-06",
+        "preferredTime": "23:10",
+        "cityLocation": "asdfg",
         "briefMessage": "asdfgzxcvb",
         "consent": true
       },
       "workflow": {
-        "nextActionDate": "2026-09-07",
-        "scheduledDate": "2026-09-07",
-        "scheduledTime": "20:20",
-        "scheduledMode": "in-person",
-        "centreLeadId": "6c047854-357c-4b7b-842a-174235dbd9e2",
+        "centreLeadId": "0c7235ff-fa4b-4110-b996-2ca1bbbe0f01",
         "centreLeadCode": "LEAD-0002",
-        "centreClientId": "39a174ed-340f-4878-a94c-e681899c1f6f",
+        "nextActionDate": "",
+        "centreClientId": "7f92842b-d3b4-4bff-912f-cc52aedede33",
         "centreClientCode": "CHT-0003",
         "appointmentId": "",
-        "promotedAt": "2026-09-06T14:55:55.284Z"
+        "communications": [
+          {
+            "id": "87c2f011-6b0c-4a3c-9155-77088c89dd02",
+            "channel": "whatsapp",
+            "purpose": "Request acknowledgement",
+            "subject": "We received your request — Chetana individual-counselling",
+            "message": "Hello venky,\n\nWe have received your individual-counselling request. Our team will review it and contact you about the next step.\n\nRegards,\nChetana Psychological Counselling Centre",
+            "recipient": "+919381690958",
+            "status": "opened",
+            "openedAt": "2026-09-06T15:40:08.053Z"
+          },
+          {
+            "id": "fa68f9bc-1b49-4e84-93d8-bfa944dbbf7a",
+            "channel": "email",
+            "purpose": "Request acknowledgement",
+            "subject": "We received your request — Chetana individual-counselling",
+            "message": "Hello venky,\n\nWe have received your individual-counselling request. Our team will review it and contact you about the next step.\n\nRegards,\nChetana Psychological Counselling Centre",
+            "recipient": "venky200364@gmail.com",
+            "status": "opened",
+            "openedAt": "2026-09-06T15:40:22.528Z"
+          }
+        ],
+        "promotedAt": "2026-09-06T15:40:39.470Z"
       }
     }
   ]

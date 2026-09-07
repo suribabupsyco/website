@@ -8,6 +8,7 @@ import greenLogo from "../../../logo-green.png";
 import {
   CalendarDays,
   CheckCircle2,
+  CheckCheck,
   ChevronRight,
   Clock3,
   Download,
@@ -27,18 +28,21 @@ import {
   DatabaseBackup,
   LogOut,
   Mail,
+  MessageCircle,
   Menu,
   Phone,
+  Copy,
   RefreshCw,
   Save,
   Search,
+  Send,
   ShieldCheck,
   Sparkles,
   UserRound,
   UserPlus,
   X,
 } from "lucide-react";
-import { formTypeLabels, type FormSubmissionRecord, type FormType, type SubmissionStatus } from "@/lib/form-submission-types";
+import { formTypeLabels, type FormSubmissionRecord, type FormType, type SubmissionCommunication, type SubmissionCommunicationChannel, type SubmissionStatus } from "@/lib/form-submission-types";
 import CentreManagement, { centreRouteMeta, isCentreAdminRoute } from "./CentreManagement";
 
 interface SessionState {
@@ -124,6 +128,152 @@ function relativeDay(value: string) {
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
   return `${days} days ago`;
+}
+
+
+type ClientMessageTemplate = "received" | "follow-up" | "booking" | "reminder" | "consent-request" | "consent-received" | "completion" | "custom";
+
+const messageTemplateLabels: Record<ClientMessageTemplate, string> = {
+  received: "Request received",
+  "follow-up": "Follow-up message",
+  booking: "Booking confirmation",
+  reminder: "Appointment reminder",
+  "consent-request": "Consent request",
+  "consent-received": "Consent received",
+  completion: "Completion / next steps",
+  custom: "Custom message",
+};
+
+const consentOptions = ["Not recorded", "Not required", "Pending", "Requested", "Received", "Declined"] as const;
+
+function pickSubmissionValue(data: FormSubmissionRecord["data"], ...keys: string[]) {
+  for (const key of keys) {
+    const value = data[key];
+    if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+function friendlyDate(value: string) {
+  if (!value) return "";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(date);
+}
+
+function normalizeWhatsAppNumber(value: string) {
+  let digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.length === 13 && digits.startsWith("091")) digits = digits.slice(1);
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  if (digits.length === 10) digits = `91${digits}`;
+  return digits;
+}
+
+function inferConsentStatus(record: FormSubmissionRecord) {
+  if (record.workflow?.consentStatus) return record.workflow.consentStatus;
+  const value = record.data.consent;
+  if (value === true || String(value).toLowerCase() === "true" || String(value).toLowerCase() === "yes") return "Received";
+  if (value === false || String(value).toLowerCase() === "false" || String(value).toLowerCase() === "no") return "Pending";
+  return "Not recorded";
+}
+
+function defaultMessageTemplate(status: SubmissionStatus, isContact: boolean): ClientMessageTemplate {
+  if (isContact) {
+    if (status === "closed") return "completion";
+    if (status === "contacted" || status === "scheduled") return "follow-up";
+    return "received";
+  }
+  if (status === "scheduled") return "booking";
+  if (status === "contacted") return "follow-up";
+  if (status === "closed") return "completion";
+  return "received";
+}
+
+function buildClientMessage(input: {
+  record: FormSubmissionRecord;
+  data: FormSubmissionRecord["data"];
+  status: SubmissionStatus;
+  template: ClientMessageTemplate;
+  scheduledDate: string;
+  scheduledTime: string;
+  scheduledMode: string;
+  nextActionDate: string;
+  contactNextActionDate: string;
+  consentStatus: string;
+}) {
+  const { record, data, template, scheduledDate, scheduledTime, scheduledMode, nextActionDate, contactNextActionDate, consentStatus } = input;
+  const identity = getIdentity({ ...record, data });
+  const name = identity.name === "Website Visitor" ? "there" : identity.name.split(/\s+/)[0];
+  const service = pickSubmissionValue(data, "counsellingFor", "programInterested", "careerArea", "serviceInterested") || record.formName.replace(/\s*Form$/i, "");
+  const sessionDate = friendlyDate(scheduledDate);
+  const nextDate = friendlyDate(record.formType === "contact" ? contactNextActionDate : nextActionDate);
+  const greeting = `Hello ${name},`;
+  const closing = "Regards,\nChetana Psychological Counselling Centre";
+  const consentLine = consentStatus === "Pending" || consentStatus === "Requested"
+    ? "Please also complete/confirm the required counselling consent before the session. "
+    : "";
+
+  if (template === "follow-up") {
+    return {
+      purpose: "Follow-up",
+      subject: `Follow-up from Chetana — ${service}`,
+      body: `${greeting}\n\nWe are following up regarding your ${service} request.${nextDate ? ` Our next follow-up is planned for ${nextDate}.` : ""} If you need a different time or have any questions, please reply to this message.\n\n${closing}`,
+    };
+  }
+  if (template === "booking") {
+    const timing = sessionDate ? `${sessionDate}${scheduledTime ? ` at ${scheduledTime}` : ""}` : "the confirmed date/time";
+    return {
+      purpose: "Booking confirmation",
+      subject: `Chetana appointment confirmation — ${service}`,
+      body: `${greeting}\n\nYour ${service} session is confirmed for ${timing}.${scheduledMode ? ` Mode: ${scheduledMode}.` : ""} ${consentLine}If you need to reschedule, please let us know as early as possible.\n\n${closing}`,
+    };
+  }
+  if (template === "reminder") {
+    const timing = sessionDate ? `${sessionDate}${scheduledTime ? ` at ${scheduledTime}` : ""}` : "your scheduled time";
+    return {
+      purpose: "Appointment reminder",
+      subject: `Reminder: Chetana session — ${timing}`,
+      body: `${greeting}\n\nThis is a reminder for your ${service} session on ${timing}.${scheduledMode ? ` Mode: ${scheduledMode}.` : ""} ${consentLine}Please be ready / arrive about 10 minutes before the scheduled time.\n\n${closing}`,
+    };
+  }
+  if (template === "consent-request") {
+    return {
+      purpose: "Consent request",
+      subject: `Consent required — Chetana ${service}`,
+      body: `${greeting}\n\nBefore we proceed with your ${service} counselling/session, we need your required consent confirmation. Current consent status: ${consentStatus === "Not recorded" ? "Pending" : consentStatus}. Please review the consent information shared by the centre and confirm it before the session. If anything is unclear, reply and we will explain it.\n\n${closing}`,
+    };
+  }
+  if (template === "consent-received") {
+    return {
+      purpose: "Consent acknowledgement",
+      subject: `Consent received — Chetana ${service}`,
+      body: `${greeting}\n\nThank you. We have recorded your consent for the ${service} counselling/session. Your consent status is now Received. We will continue with the next scheduled or follow-up step and contact you if anything else is required.\n\n${closing}`,
+    };
+  }
+  if (template === "completion") {
+    return {
+      purpose: record.formType === "contact" ? "Contact resolved" : "Completion / next steps",
+      subject: `Update from Chetana — ${service}`,
+      body: `${greeting}\n\nYour current ${record.formType === "contact" ? "message/request" : service + " request"} has been updated as completed. If you need another follow-up, a new appointment, or further support, you can reply to this message and we will assist you.\n\n${closing}`,
+    };
+  }
+  if (template === "custom") return { purpose: "Custom message", subject: `Chetana — ${service}`, body: "" };
+  return {
+    purpose: "Request acknowledgement",
+    subject: `We received your request — Chetana ${service}`,
+    body: `${greeting}\n\nWe have received your ${record.formType === "contact" ? "message" : service + " request"}. Our team will review it and contact you about the next step.${nextDate ? ` The next action is planned for ${nextDate}.` : ""}\n\n${closing}`,
+  };
+}
+
+function localDateTimeParts(value: string) {
+  const date = new Date(value);
+  const pad = (number: number) => String(number).padStart(2, "0");
+  return {
+    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  };
 }
 
 function LoginScreen({ session, onLogin }: { session: SessionState; onLogin: () => void }) {
@@ -228,9 +378,16 @@ function DetailPanel({ record, onClose, onSaved }: { record: FormSubmissionRecor
   const [saving, setSaving] = useState(false);
   const [clientImporting, setClientImporting] = useState(false);
   const [clientImportedCode, setClientImportedCode] = useState("");
+  const [consentStatus, setConsentStatus] = useState("Not recorded");
+  const [messageTemplate, setMessageTemplate] = useState<ClientMessageTemplate>(defaultMessageTemplate(record.status, record.formType === "contact"));
+  const [messageSubject, setMessageSubject] = useState("");
+  const [messageBody, setMessageBody] = useState("");
+  const [communicationHistory, setCommunicationHistory] = useState<SubmissionCommunication[]>([]);
+  const [communicationBusy, setCommunicationBusy] = useState("");
+  const [copied, setCopied] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
-  const identity = getIdentity(record);
+  const identity = getIdentity({ ...record, data });
   const isContact = record.formType === "contact";
 
   const pickData = useCallback((...keys: string[]) => {
@@ -248,9 +405,34 @@ function DetailPanel({ record, onClose, onSaved }: { record: FormSubmissionRecor
     setScheduledDate(record.workflow?.scheduledDate || pickData("preferredDate", "appointmentDate", "date"));
     setScheduledTime(record.workflow?.scheduledTime || pickData("preferredTime", "appointmentTime", "time"));
     setScheduledMode(record.workflow?.scheduledMode || pickData("preferredSessionType", "mode") || "In-person");
-    setContactNextActionDate(record.workflow?.contactNextActionDate || "");
-    setNextActionDate(record.workflow?.nextActionDate || "");
+    const loadedScheduledDate = record.workflow?.scheduledDate || pickData("preferredDate", "appointmentDate", "date");
+    const loadedScheduledTime = record.workflow?.scheduledTime || pickData("preferredTime", "appointmentTime", "time");
+    const loadedScheduledMode = record.workflow?.scheduledMode || pickData("preferredSessionType", "mode") || "In-person";
+    const loadedNextActionDate = record.workflow?.nextActionDate || "";
+    const loadedContactNextActionDate = record.workflow?.contactNextActionDate || "";
+    const loadedConsentStatus = inferConsentStatus(record);
+    const loadedTemplate = defaultMessageTemplate(record.status, record.formType === "contact");
+    setContactNextActionDate(loadedContactNextActionDate);
+    setNextActionDate(loadedNextActionDate);
     setClientImportedCode(record.workflow?.centreClientCode || "");
+    setConsentStatus(loadedConsentStatus);
+    setCommunicationHistory(record.workflow?.communications || []);
+    setMessageTemplate(loadedTemplate);
+    const message = buildClientMessage({
+      record,
+      data: record.data,
+      status: record.status,
+      template: loadedTemplate,
+      scheduledDate: loadedScheduledDate,
+      scheduledTime: loadedScheduledTime,
+      scheduledMode: loadedScheduledMode,
+      nextActionDate: loadedNextActionDate,
+      contactNextActionDate: loadedContactNextActionDate,
+      consentStatus: loadedConsentStatus,
+    });
+    setMessageSubject(message.subject);
+    setMessageBody(message.body);
+    setCopied(false);
     setError("");
   }, [record, pickData]);
 
@@ -260,6 +442,165 @@ function DetailPanel({ record, onClose, onSaved }: { record: FormSubmissionRecor
     if (typeof original === "number") next = value === "" ? 0 : Number(value);
     if (typeof original === "boolean") next = value === "true";
     setData((current) => ({ ...current, [key]: next }));
+  };
+
+  const buildCurrentMessage = (template = messageTemplate, statusOverride = status) => buildClientMessage({
+    record,
+    data,
+    status: statusOverride,
+    template,
+    scheduledDate,
+    scheduledTime,
+    scheduledMode,
+    nextActionDate,
+    contactNextActionDate,
+    consentStatus,
+  });
+
+  const applyMessageTemplate = (template: ClientMessageTemplate) => {
+    setMessageTemplate(template);
+    if (template === "custom") return;
+    const message = buildCurrentMessage(template);
+    setMessageSubject(message.subject);
+    setMessageBody(message.body);
+    setCopied(false);
+  };
+
+  const handleStatusChange = (nextStatus: SubmissionStatus) => {
+    setStatus(nextStatus);
+    const nextTemplate = defaultMessageTemplate(nextStatus, isContact);
+    setMessageTemplate(nextTemplate);
+    const message = buildCurrentMessage(nextTemplate, nextStatus);
+    setMessageSubject(message.subject);
+    setMessageBody(message.body);
+    setCopied(false);
+  };
+
+  const copyMessage = async () => {
+    try {
+      await navigator.clipboard.writeText(messageBody);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError("Unable to copy the message. You can still select and copy the text manually.");
+    }
+  };
+
+  const persistCommunicationHistory = async (history: SubmissionCommunication[], extraWorkflow: Record<string, unknown> = {}) => {
+    const response = await fetch(`/api/form-submissions/${record.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workflow: { communications: history, ...extraWorkflow } }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Unable to update communication history.");
+    const updated = body.submission as FormSubmissionRecord;
+    setCommunicationHistory(updated.workflow?.communications || history);
+    onSaved(updated);
+    return updated;
+  };
+
+  const openCommunication = async (channel: SubmissionCommunicationChannel) => {
+    setError("");
+    setSuccess("");
+    const liveIdentity = getIdentity({ ...record, data });
+    const recipient = channel === "whatsapp" ? normalizeWhatsAppNumber(liveIdentity.phone) : liveIdentity.email.trim();
+    if (!recipient) {
+      setError(channel === "whatsapp" ? "Add a valid client phone number before opening WhatsApp." : "Add a client email address before opening email.");
+      return;
+    }
+    if (!messageBody.trim()) {
+      setError("Add a message before sending.");
+      return;
+    }
+
+    const message = buildCurrentMessage();
+    const subject = messageSubject.trim() || message.subject;
+    const purpose = messageTemplate === "custom" ? "Custom message" : message.purpose;
+    const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const openedAt = new Date().toISOString();
+    const event: SubmissionCommunication = {
+      id,
+      channel,
+      purpose,
+      subject,
+      message: messageBody.trim(),
+      recipient: channel === "whatsapp" ? `+${recipient}` : recipient,
+      status: "opened",
+      openedAt,
+    };
+    const nextHistory = [...communicationHistory, event].slice(-100);
+    setCommunicationHistory(nextHistory);
+
+    const url = channel === "whatsapp"
+      ? `https://wa.me/${recipient}?text=${encodeURIComponent(messageBody.trim())}`
+      : `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(messageBody.trim())}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+
+    setCommunicationBusy(channel);
+    try {
+      const consentPatch = messageTemplate === "consent-request" && consentStatus !== "Received"
+        ? { consentStatus: "Requested", consentStatusUpdatedAt: openedAt }
+        : {};
+      if (messageTemplate === "consent-request" && consentStatus !== "Received") setConsentStatus("Requested");
+      await persistCommunicationHistory(nextHistory, consentPatch);
+      setSuccess(`${channel === "whatsapp" ? "WhatsApp" : "Email"} opened with the complete message ready. After you press Send in the app, mark it as sent below.`);
+    } catch (err) {
+      setError(err instanceof Error ? `${err.message} The message window was still opened.` : "The message window was opened, but the history could not be saved.");
+    } finally {
+      setCommunicationBusy("");
+    }
+  };
+
+  const markCommunicationSent = async (item: SubmissionCommunication) => {
+    if (item.status === "sent") return;
+    setCommunicationBusy(item.id);
+    setError("");
+    setSuccess("");
+    const sentAt = new Date().toISOString();
+    let nextHistory = communicationHistory.map((entry) => entry.id === item.id ? { ...entry, status: "sent" as const, sentAt } : entry);
+    setCommunicationHistory(nextHistory);
+    try {
+      let updated = await persistCommunicationHistory(nextHistory);
+      if (!isContact && !item.centreCommunicationId) {
+        const parts = localDateTimeParts(sentAt);
+        const centreResponse = await fetch("/api/centre-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            collection: "communications",
+            data: {
+              clientId: updated.workflow?.centreClientId || "",
+              clientName: getIdentity(updated).name,
+              sourceSubmissionId: record.id,
+              sourceCommunicationId: item.id,
+              recipient: item.recipient,
+              subject: item.subject,
+              communicationDate: parts.date,
+              communicationTime: parts.time,
+              channel: item.channel === "whatsapp" ? "WhatsApp" : "Email",
+              direction: "Outgoing",
+              purpose: item.purpose || "Client update",
+              staff: "Admin",
+              outcome: item.message,
+              nextActionDate: updated.workflow?.nextActionDate || "",
+              status: "Completed",
+              notes: `Sent from website enquiry ${record.id.slice(0, 8)} to ${item.recipient}.`,
+            },
+          }),
+        });
+        const centreBody = await centreResponse.json();
+        if (centreResponse.ok && centreBody.record?.id) {
+          nextHistory = nextHistory.map((entry) => entry.id === item.id ? { ...entry, centreCommunicationId: String(centreBody.record.id) } : entry);
+          updated = await persistCommunicationHistory(nextHistory);
+        }
+      }
+      setSuccess(`${item.channel === "whatsapp" ? "WhatsApp" : "Email"} marked as sent${isContact ? " in the Contact Inbox history" : " and added to the communication history"}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to mark the message as sent.");
+    } finally {
+      setCommunicationBusy("");
+    }
   };
 
   const createClientProfile = async () => {
@@ -297,7 +638,7 @@ function DetailPanel({ record, onClose, onSaved }: { record: FormSubmissionRecor
         referralSource: `Website — ${record.formName}`,
         assignedCounsellor: "",
         status: "New",
-        consent: consentValue === true || String(consentValue).toLowerCase() === "true" ? "Received" : "Pending",
+        consent: consentStatus !== "Not recorded" ? consentStatus : (consentValue === true || String(consentValue).toLowerCase() === "true" ? "Received" : "Pending"),
         tags: record.formType,
         documents: "",
         notes: `Created from website enquiry received ${dateLabel(record.submittedAt)}.`,
@@ -344,7 +685,14 @@ function DetailPanel({ record, onClose, onSaved }: { record: FormSubmissionRecor
           data,
           workflow: isContact
             ? { contactNextActionDate }
-            : { scheduledDate, scheduledTime, scheduledMode, nextActionDate },
+            : {
+                scheduledDate,
+                scheduledTime,
+                scheduledMode,
+                nextActionDate,
+                consentStatus,
+                ...(record.workflow?.consentStatus !== consentStatus ? { consentStatusUpdatedAt: new Date().toISOString() } : {}),
+              },
         }),
       });
       const body = await response.json();
@@ -354,6 +702,8 @@ function DetailPanel({ record, onClose, onSaved }: { record: FormSubmissionRecor
       setScheduledTime(updated.workflow?.scheduledTime || scheduledTime);
       setScheduledMode(updated.workflow?.scheduledMode || scheduledMode);
       setClientImportedCode(updated.workflow?.centreClientCode || clientImportedCode);
+      setConsentStatus(updated.workflow?.consentStatus || consentStatus);
+      setCommunicationHistory(updated.workflow?.communications || communicationHistory);
       if (isContact) {
         setSuccess("Contact message updated in the separate Contact Inbox flow.");
       } else if (updated.status === "scheduled" && updated.workflow?.appointmentId) {
@@ -437,7 +787,7 @@ function DetailPanel({ record, onClose, onSaved }: { record: FormSubmissionRecor
           </div>
 
           <div className="mt-7 grid gap-5 sm:grid-cols-2">
-            <label><span className="mb-2 block text-sm font-bold text-slate-800">{isContact ? "Contact status" : "Workflow stage"}</span><select value={status} onChange={(e) => setStatus(e.target.value as SubmissionStatus)} className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-[#5d8079] focus:ring-4 focus:ring-[#5d8079]/10">{selectableStatuses.map((value) => <option key={value} value={value}>{isContact ? contactStatusLabels[value] : statusLabels[value]}</option>)}</select></label>
+            <label><span className="mb-2 block text-sm font-bold text-slate-800">{isContact ? "Contact status" : "Workflow stage"}</span><select value={status} onChange={(e) => handleStatusChange(e.target.value as SubmissionStatus)} className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium outline-none focus:border-[#5d8079] focus:ring-4 focus:ring-[#5d8079]/10">{selectableStatuses.map((value) => <option key={value} value={value}>{isContact ? contactStatusLabels[value] : statusLabels[value]}</option>)}</select></label>
             <div><span className="mb-2 block text-sm font-bold text-slate-800">Record ID</span><div className="h-12 flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-xs text-slate-500 truncate">{record.id}</div></div>
           </div>
 
@@ -467,6 +817,70 @@ function DetailPanel({ record, onClose, onSaved }: { record: FormSubmissionRecor
               <label className="mt-3 block max-w-xs"><span className="mb-1.5 block text-xs font-bold text-slate-600">Next action date</span><input type="date" value={contactNextActionDate} onChange={(e) => setContactNextActionDate(e.target.value)} className="h-11 w-full rounded-xl border border-sky-200 bg-white px-3 text-sm outline-none focus:ring-4 focus:ring-sky-100" /></label>
             </section>
           )}
+
+          {!isContact && (
+            <section className="mt-5 rounded-2xl border border-violet-200 bg-violet-50/45 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-violet-700" /><h3 className="text-sm font-bold text-slate-800">Consent tracking</h3></div>
+                  <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">Track whether consent is required, requested, received or declined for this client journey. The status stays with the same website request and can be included in client messages.</p>
+                </div>
+                <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[10px] font-bold ${consentStatus === "Received" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : consentStatus === "Declined" ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{consentStatus}</span>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Consent status</span><select value={consentStatus} onChange={(e) => setConsentStatus(e.target.value)} className="h-11 w-full rounded-xl border border-violet-200 bg-white px-3 text-sm outline-none focus:ring-4 focus:ring-violet-100">{consentOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => applyMessageTemplate("consent-request")} className="inline-flex h-11 items-center gap-2 rounded-xl border border-violet-200 bg-white px-3 text-xs font-bold text-violet-700 hover:bg-violet-50"><Mail className="h-4 w-4" /> Prepare consent request</button>
+                  {consentStatus === "Received" && <button type="button" onClick={() => applyMessageTemplate("consent-received")} className="inline-flex h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-xs font-bold text-emerald-700 hover:bg-emerald-50"><CheckCheck className="h-4 w-4" /> Acknowledge consent</button>}
+                </div>
+              </div>
+              <p className="mt-3 text-[10px] leading-4 text-slate-400">{record.workflow?.consentStatusUpdatedAt ? `Last consent update: ${dateLabel(record.workflow.consentStatusUpdatedAt)}` : data.consent !== undefined ? "Initial consent state was read from the submitted form; save to confirm any admin change." : "This form did not capture a consent field, so the admin can track it here when required."}</p>
+            </section>
+          )}
+
+          <section className="mt-5 overflow-hidden rounded-2xl border border-[#173f45]/15 bg-white">
+            <div className="border-b border-slate-100 bg-[#173f45]/[0.035] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2"><Send className="h-4 w-4 text-[#5d8079]" /><h3 className="text-sm font-bold text-slate-800">Client communication centre</h3></div>
+                  <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">Prepare clear updates for timings, bookings, follow-ups, consent and completion. WhatsApp and email open with the message already filled in.</p>
+                </div>
+                <span className="inline-flex w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">No paid messaging API</span>
+              </div>
+              <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] leading-4 text-slate-500"><strong className="text-slate-700">Free-service model:</strong> existing FormSubmit remains for incoming website forms. Outgoing WhatsApp uses WhatsApp click-to-chat and email uses the device email client, so there is no per-message API charge. The final Send action is completed in WhatsApp/email itself.</div>
+            </div>
+
+            <div className="p-4">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Message type</span><select value={messageTemplate} onChange={(e) => applyMessageTemplate(e.target.value as ClientMessageTemplate)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#5d8079] focus:ring-4 focus:ring-[#5d8079]/10">{Object.entries(messageTemplateLabels).filter(([value]) => !isContact || ["received", "follow-up", "completion", "custom"].includes(value)).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <button type="button" onClick={() => applyMessageTemplate(messageTemplate)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-600 hover:bg-white"><RefreshCw className="h-4 w-4" /> Refresh from latest details</button>
+              </div>
+
+              {!isContact && <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={() => applyMessageTemplate("booking")} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:border-emerald-200 hover:text-emerald-700">Booking confirmation</button>
+                <button type="button" onClick={() => applyMessageTemplate("reminder")} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:border-sky-200 hover:text-sky-700">Appointment reminder</button>
+                <button type="button" onClick={() => applyMessageTemplate("follow-up")} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:border-sky-200 hover:text-sky-700">Follow-up</button>
+                <button type="button" onClick={() => applyMessageTemplate("consent-request")} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:border-violet-200 hover:text-violet-700">Consent request</button>
+                <button type="button" onClick={() => applyMessageTemplate("completion")} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:border-slate-300 hover:text-slate-800">Completion</button>
+              </div>}
+
+              <label className="mt-4 block"><span className="mb-1.5 block text-xs font-bold text-slate-600">Email subject</span><input value={messageSubject} onChange={(e) => setMessageSubject(e.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#5d8079] focus:ring-4 focus:ring-[#5d8079]/10" /></label>
+              <label className="mt-3 block"><span className="mb-1.5 block text-xs font-bold text-slate-600">Message</span><textarea rows={7} value={messageBody} onChange={(e) => { setMessageBody(e.target.value); setMessageTemplate("custom"); }} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none focus:border-[#5d8079] focus:ring-4 focus:ring-[#5d8079]/10" /></label>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <button type="button" onClick={copyMessage} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 hover:bg-slate-50">{copied ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />} {copied ? "Copied" : "Copy message"}</button>
+                <button type="button" onClick={() => openCommunication("whatsapp")} disabled={!normalizeWhatsAppNumber(identity.phone) || Boolean(communicationBusy)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"><MessageCircle className="h-4 w-4" /> {communicationBusy === "whatsapp" ? "Opening…" : identity.phone ? "WhatsApp client" : "No WhatsApp number"}</button>
+                <button type="button" onClick={() => openCommunication("email")} disabled={!identity.email || Boolean(communicationBusy)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#173f45] px-3 text-xs font-bold text-white hover:bg-[#102f34] disabled:cursor-not-allowed disabled:opacity-40"><Mail className="h-4 w-4" /> {communicationBusy === "email" ? "Opening…" : identity.email ? "Email client" : "No email address"}</button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-slate-400"><span>WhatsApp: {identity.phone || "not provided"}</span><span>Email: {identity.email || "not provided"}</span>{scheduledDate && <span>Schedule: {friendlyDate(scheduledDate)} {scheduledTime}</span>}</div>
+            </div>
+
+            <div className="border-t border-slate-100 bg-slate-50/60 p-4">
+              <div className="flex items-center justify-between gap-3"><div><h4 className="text-xs font-bold text-slate-700">Message history</h4><p className="mt-0.5 text-[10px] text-slate-400">Opened messages are recorded first; mark them sent only after you actually press Send in WhatsApp/email.</p></div><span className="text-[10px] font-bold text-slate-400">{communicationHistory.length} total</span></div>
+              {communicationHistory.length === 0 ? <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">No client messages recorded yet.</div> : <div className="mt-3 space-y-2">{[...communicationHistory].reverse().slice(0, 6).map((item) => <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${item.channel === "whatsapp" ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-700"}`}>{item.channel === "whatsapp" ? "WhatsApp" : "Email"}</span><span className="truncate text-xs font-bold text-slate-700">{item.purpose}</span><span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${item.status === "sent" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{item.status === "sent" ? "Sent" : "Opened"}</span></div><div className="mt-1 truncate text-[10px] text-slate-400">{item.recipient} • {dateLabel(item.sentAt || item.openedAt)}</div></div>{item.status !== "sent" && <button type="button" onClick={() => markCommunicationSent(item)} disabled={Boolean(communicationBusy)} className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-[10px] font-bold text-emerald-700 disabled:opacity-50"><CheckCheck className="h-3.5 w-3.5" /> {communicationBusy === item.id ? "Saving…" : "Mark sent"}</button>}</div></div>)}</div>}
+            </div>
+          </section>
 
           <label className="mt-5 block"><span className="mb-2 block text-sm font-bold text-slate-800">Private admin notes</span><textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={isContact ? "Add reply outcome, callback note or reason for closing…" : "Add call outcome, counselling notes or scheduling details…"} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none focus:border-[#5d8079] focus:ring-4 focus:ring-[#5d8079]/10" /></label>
 

@@ -11,6 +11,22 @@ export const formTypeLabels = {
 export type FormType = keyof typeof formTypeLabels;
 export type SubmissionStatus = "new" | "contacted" | "scheduled" | "closed";
 
+export type SubmissionCommunicationChannel = "whatsapp" | "email";
+export type SubmissionCommunicationStatus = "opened" | "sent";
+
+export interface SubmissionCommunication {
+  id: string;
+  channel: SubmissionCommunicationChannel;
+  purpose: string;
+  subject: string;
+  message: string;
+  recipient: string;
+  status: SubmissionCommunicationStatus;
+  openedAt: string;
+  sentAt?: string;
+  centreCommunicationId?: string;
+}
+
 export interface SubmissionWorkflow {
   centreLeadId?: string;
   centreLeadCode?: string;
@@ -23,6 +39,9 @@ export interface SubmissionWorkflow {
   appointmentId?: string;
   promotedAt?: string;
   contactNextActionDate?: string;
+  consentStatus?: string;
+  consentStatusUpdatedAt?: string;
+  communications?: SubmissionCommunication[];
 }
 
 export interface FormSubmissionRecord {

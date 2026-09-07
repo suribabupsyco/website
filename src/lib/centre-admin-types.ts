@@ -143,6 +143,10 @@ export interface CarePlanRecord extends CentreRecordBase {
 export interface CommunicationRecord extends CentreRecordBase {
   clientId: string;
   clientName: string;
+  sourceSubmissionId?: string;
+  sourceCommunicationId?: string;
+  recipient?: string;
+  subject?: string;
   communicationDate: string;
   communicationTime: string;
   channel: string;

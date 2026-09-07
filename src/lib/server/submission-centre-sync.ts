@@ -64,6 +64,8 @@ export async function syncSubmissionToCentre(record: FormSubmissionRecord): Prom
     if (!scheduledDate) throw new Error("Choose the confirmed date before marking this request as Booked / next step.");
 
     const consentValue = record.data.consent;
+    const consentStatus = record.workflow?.consentStatus
+      || (consentValue === true || String(consentValue).toLowerCase() === "true" ? "Received" : "Pending");
     const clientPayload = {
       fullName,
       phone,
@@ -86,7 +88,7 @@ export async function syncSubmissionToCentre(record: FormSubmissionRecord): Prom
       referralSource: `Website — ${record.formName}`,
       assignedCounsellor: "",
       status: "Active",
-      consent: consentValue === true || String(consentValue).toLowerCase() === "true" ? "Received" : "Pending",
+      consent: consentStatus,
       tags: record.formType,
       documents: "",
       notes: `Continuous website intake ${record.id.slice(0, 8)}. ${record.adminNotes || ""}`.trim(),
@@ -103,9 +105,16 @@ export async function syncSubmissionToCentre(record: FormSubmissionRecord): Prom
   } else if (record.status === "closed" && client) {
     const completedClient = await updateCentreRecord("clients", client.id, {
       status: "Completed",
+      consent: record.workflow?.consentStatus || client.consent || "Pending",
       notes: `Website intake closed. ${record.adminNotes || ""}`.trim(),
     });
     if (completedClient) client = completedClient as unknown as NonNullable<typeof client>;
+    centreStore = await readCentreStore();
+  } else if (client && record.workflow?.consentStatus) {
+    const consentUpdatedClient = await updateCentreRecord("clients", client.id, {
+      consent: record.workflow.consentStatus,
+    });
+    if (consentUpdatedClient) client = consentUpdatedClient as unknown as NonNullable<typeof client>;
     centreStore = await readCentreStore();
   }
 

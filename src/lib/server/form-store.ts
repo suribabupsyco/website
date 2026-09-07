@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
-import { formTypeLabels, type FormSubmissionRecord, type FormSubmissionStore, type FormType, type SubmissionStatus, type SubmissionWorkflow } from "@/lib/form-submission-types";
+import { formTypeLabels, type FormSubmissionRecord, type FormSubmissionStore, type FormType, type SubmissionCommunication, type SubmissionStatus, type SubmissionWorkflow } from "@/lib/form-submission-types";
 
 const EMPTY_STORE: FormSubmissionStore = { version: 1, updatedAt: null, submissions: [] };
 let mutationQueue: Promise<unknown> = Promise.resolve();
@@ -112,11 +112,35 @@ function cleanData(input: unknown) {
   return Object.fromEntries(entries.map(([key, value]) => [key.slice(0, 100), cleanScalar(value)]));
 }
 
+function cleanCommunications(value: unknown): SubmissionCommunication[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.slice(-100).flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const source = item as Record<string, unknown>;
+    const channel = source.channel === "whatsapp" || source.channel === "email" ? source.channel : null;
+    const status = source.status === "sent" ? "sent" : source.status === "opened" ? "opened" : null;
+    if (!channel || !status) return [];
+    const text = (key: string, max: number) => typeof source[key] === "string" ? String(source[key]).slice(0, max) : "";
+    return [{
+      id: text("id", 120) || randomUUID(),
+      channel,
+      purpose: text("purpose", 120),
+      subject: text("subject", 240),
+      message: text("message", 5000),
+      recipient: text("recipient", 240),
+      status,
+      openedAt: text("openedAt", 50) || new Date().toISOString(),
+      sentAt: text("sentAt", 50) || undefined,
+      centreCommunicationId: text("centreCommunicationId", 120) || undefined,
+    }];
+  });
+}
+
 function cleanWorkflow(input: unknown): SubmissionWorkflow {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
   const source = input as Record<string, unknown>;
   const text = (key: string, max = 200) => typeof source[key] === "string" ? String(source[key]).slice(0, max) : undefined;
-  return {
+  const cleaned: SubmissionWorkflow = {
     centreLeadId: text("centreLeadId", 120),
     centreLeadCode: text("centreLeadCode", 80),
     scheduledDate: text("scheduledDate", 20),
@@ -128,7 +152,11 @@ function cleanWorkflow(input: unknown): SubmissionWorkflow {
     appointmentId: text("appointmentId", 120),
     promotedAt: text("promotedAt", 40),
     contactNextActionDate: text("contactNextActionDate", 20),
+    consentStatus: text("consentStatus", 40),
+    consentStatusUpdatedAt: text("consentStatusUpdatedAt", 50),
+    communications: cleanCommunications(source.communications),
   };
+  return Object.fromEntries(Object.entries(cleaned).filter(([, value]) => value !== undefined)) as SubmissionWorkflow;
 }
 
 export async function addSubmission(input: {
