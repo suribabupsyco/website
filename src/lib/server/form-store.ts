@@ -1,10 +1,29 @@
 import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
+import { Redis } from "@upstash/redis";
 import { formTypeLabels, type FormSubmissionRecord, type FormSubmissionStore, type FormType, type SubmissionCommunication, type SubmissionStatus, type SubmissionWorkflow } from "@/lib/form-submission-types";
 
 const EMPTY_STORE: FormSubmissionStore = { version: 1, updatedAt: null, submissions: [] };
+const REDIS_RECORDS_KEY = "chetana:form-submissions:v1:records";
+const REDIS_UPDATED_AT_KEY = "chetana:form-submissions:v1:updated-at";
+const REDIS_SEEDED_KEY = "chetana:form-submissions:v1:seeded";
+const REDIS_CLIENT_ID_PREFIX = "chetana:form-submissions:v1:client-id:";
 let mutationQueue: Promise<unknown> = Promise.resolve();
+
+function getRedis() {
+  const url = process.env.KV_REST_API_URL?.trim() || process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const token = process.env.KV_REST_API_TOKEN?.trim() || process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+
+  if (!url && !token) {
+    if (process.env.VERCEL) {
+      throw new Error("Persistent form storage is not configured. Connect an Upstash Redis store to this Vercel project.");
+    }
+    return null;
+  }
+  if (!url || !token) throw new Error("Both Redis REST URL and token must be configured.");
+  return new Redis({ url, token });
+}
 
 function getFilePath() {
   const configured = process.env.FORM_SUBMISSIONS_FILE?.trim();
@@ -34,7 +53,7 @@ async function parseStore(filePath: string): Promise<FormSubmissionStore> {
   return { version: 1, updatedAt: parsed.updatedAt || null, submissions: parsed.submissions as FormSubmissionRecord[] };
 }
 
-export async function readStore(): Promise<FormSubmissionStore> {
+async function readFileStore(): Promise<FormSubmissionStore> {
   const filePath = await ensureStoreFile();
   try {
     return await parseStore(filePath);
@@ -48,6 +67,55 @@ export async function readStore(): Promise<FormSubmissionStore> {
       throw mainError;
     }
   }
+}
+
+async function readSeedFileStore(): Promise<FormSubmissionStore> {
+  const filePath = getFilePath();
+  try {
+    return await parseStore(filePath);
+  } catch (mainError) {
+    try {
+      return await parseStore(getBackupPath(filePath));
+    } catch {
+      throw mainError;
+    }
+  }
+}
+
+async function seedRedisFromFile(redis: Redis) {
+  const claimed = await redis.set(REDIS_SEEDED_KEY, new Date().toISOString(), { nx: true });
+  if (!claimed) return;
+
+  try {
+    // The deployed JSON is read-only on Vercel, so migration must not try to
+    // create directories or repair files before copying the bundled records.
+    const fileStore = await readSeedFileStore();
+    if (fileStore.submissions.length === 0) return;
+    const transaction = redis.multi();
+    for (const record of fileStore.submissions) {
+      transaction.hset(REDIS_RECORDS_KEY, { [record.id]: record });
+      if (record.clientSubmissionId) {
+        transaction.set(`${REDIS_CLIENT_ID_PREFIX}${record.clientSubmissionId}`, record.id);
+      }
+    }
+    transaction.set(REDIS_UPDATED_AT_KEY, fileStore.updatedAt || new Date().toISOString());
+    await transaction.exec();
+  } catch (error) {
+    await redis.del(REDIS_SEEDED_KEY).catch(() => undefined);
+    throw error;
+  }
+}
+
+export async function readStore(): Promise<FormSubmissionStore> {
+  const redis = getRedis();
+  if (!redis) return readFileStore();
+
+  await seedRedisFromFile(redis);
+  const [submissions, updatedAt] = await Promise.all([
+    redis.hvals(REDIS_RECORDS_KEY) as Promise<FormSubmissionRecord[]>,
+    redis.get<string>(REDIS_UPDATED_AT_KEY),
+  ]);
+  return { version: 1, updatedAt: updatedAt || null, submissions };
 }
 
 async function writeStore(store: FormSubmissionStore) {
@@ -173,12 +241,25 @@ export async function addSubmission(input: {
   const data = cleanData(input.data);
 
   return queueMutation(async () => {
-    const store = await readStore();
+    const redis = getRedis();
     const clientSubmissionId = typeof input.clientSubmissionId === "string" ? input.clientSubmissionId.slice(0, 120) : "";
-    if (clientSubmissionId) {
-      const existing = store.submissions.find((item) => item.clientSubmissionId === clientSubmissionId);
-      if (existing) return existing;
+    if (redis) {
+      await seedRedisFromFile(redis);
+      if (clientSubmissionId) {
+        const existingId = await redis.get<string>(`${REDIS_CLIENT_ID_PREFIX}${clientSubmissionId}`);
+        if (existingId) {
+          const existing = await redis.hget<FormSubmissionRecord>(REDIS_RECORDS_KEY, existingId);
+          if (existing) return existing;
+        }
+      }
+    } else {
+      const store = await readFileStore();
+      if (clientSubmissionId) {
+        const existing = store.submissions.find((item) => item.clientSubmissionId === clientSubmissionId);
+        if (existing) return existing;
+      }
     }
+
     const now = new Date().toISOString();
     const clientDate = typeof input.clientSubmittedAt === "string" && !Number.isNaN(Date.parse(input.clientSubmittedAt))
       ? new Date(input.clientSubmittedAt).toISOString()
@@ -196,6 +277,17 @@ export async function addSubmission(input: {
       sourcePath: typeof input.sourcePath === "string" ? input.sourcePath.slice(0, 300) : "",
       data,
     };
+
+    if (redis) {
+      const transaction = redis.multi();
+      transaction.hset(REDIS_RECORDS_KEY, { [record.id]: record });
+      transaction.set(REDIS_UPDATED_AT_KEY, now);
+      if (clientSubmissionId) transaction.set(`${REDIS_CLIENT_ID_PREFIX}${clientSubmissionId}`, record.id);
+      await transaction.exec();
+      return record;
+    }
+
+    const store = await readFileStore();
     store.submissions.push(record);
     store.updatedAt = now;
     await writeStore(store);
@@ -207,8 +299,12 @@ const allowedStatuses: SubmissionStatus[] = ["new", "contacted", "scheduled", "c
 
 export async function updateSubmission(id: string, patch: { status?: unknown; adminNotes?: unknown; data?: unknown; workflow?: unknown }) {
   return queueMutation(async () => {
-    const store = await readStore();
-    const record = store.submissions.find((item) => item.id === id);
+    const redis = getRedis();
+    if (redis) await seedRedisFromFile(redis);
+    const store = redis ? null : await readFileStore();
+    const record = redis
+      ? await redis.hget<FormSubmissionRecord>(REDIS_RECORDS_KEY, id)
+      : store?.submissions.find((item) => item.id === id);
     if (!record) return null;
 
     if (patch.status !== undefined) {
@@ -226,8 +322,15 @@ export async function updateSubmission(id: string, patch: { status?: unknown; ad
 
     const now = new Date().toISOString();
     record.updatedAt = now;
-    store.updatedAt = now;
-    await writeStore(store);
+    if (redis) {
+      const transaction = redis.multi();
+      transaction.hset(REDIS_RECORDS_KEY, { [record.id]: record });
+      transaction.set(REDIS_UPDATED_AT_KEY, now);
+      await transaction.exec();
+    } else if (store) {
+      store.updatedAt = now;
+      await writeStore(store);
+    }
     return record;
   });
 }

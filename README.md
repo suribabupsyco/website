@@ -56,9 +56,9 @@ src/data/
 
 The responsive layer is intentionally designed rather than simply scaled down from desktop. Mobile includes a compact full-screen navigation experience, balanced hero composition, touch-friendly CTA sizing, 2×2 trust metrics, shorter service cards, a vertical counselling-process timeline, responsive training/resource cards, mobile-safe form inputs, compact breadcrumbs, a floating contact dock, and footer spacing for device safe areas. Desktop breakpoints retain the premium desktop presentation.
 
-## Admin panel and JSON form storage
+## Admin panel and persistent form storage
 
-The website now stores a copy of every active form submission in a server-side JSON file while preserving the existing FormSubmit email flow.
+The website stores every active form submission for the admin panel while preserving the independent FormSubmit email flow. Local Node development uses the server-side JSON file; Vercel uses a shared Upstash Redis database so submissions remain visible across function instances and deployments.
 
 Admin URL:
 
@@ -74,7 +74,7 @@ ADMIN_PASSWORD=<strong-password>
 ADMIN_SESSION_SECRET=<long-random-secret>
 ```
 
-By default, form records are stored in:
+For local development and persistent Node/VPS deployments, form records are stored in:
 
 ```text
 data/form-submissions.json
@@ -86,13 +86,15 @@ The storage writer uses atomic replacement and maintains:
 data/form-submissions.backup.json
 ```
 
-The admin panel supports search, form/status filtering, JSON export, editable submission fields, follow-up status and private admin notes. All edits are written back to the same JSON storage.
+The admin panel supports search, form/status filtering, JSON export, editable submission fields, follow-up status and private admin notes. All edits are written back to the active persistent store.
 
-### Important deployment requirement for JSON persistence
+### Required Vercel storage setup
 
-JSON-file storage needs a persistent writable server filesystem. For production, deploy the Next.js app on a Node server/VPS/container with a persistent disk/volume, and optionally point `FORM_SUBMISSIONS_FILE` to that mounted path. A stateless/serverless runtime with ephemeral filesystem storage cannot guarantee that runtime file writes will survive restarts or redeployments.
+Before deploying on Vercel, connect an **Upstash Redis** integration to the project from the Vercel Marketplace. Vercel injects `KV_REST_API_URL` and `KV_REST_API_TOKEN`; the application detects them automatically. A deployment without these variables rejects the admin save instead of falsely telling a visitor that the enquiry reached the admin panel.
 
-The browser also keeps a small local retry queue and uses a navigation-safe beacon fallback if the JSON API is temporarily unreachable. FormSubmit email submission remains independent so the existing email flow is not blocked by a temporary JSON write failure.
+On a Node server/VPS/container, keep using a persistent disk and optionally point `FORM_SUBMISSIONS_FILE` to the mounted path. A stateless/serverless filesystem must never be used as permanent form storage.
+
+The browser keeps a small local retry queue if the admin intake is temporarily unreachable. FormSubmit email delivery remains independent, but the UI only reports success after the admin intake confirms durable storage.
 
 ## Counselling-centre management workspace
 

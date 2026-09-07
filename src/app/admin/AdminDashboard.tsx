@@ -979,6 +979,20 @@ export default function AdminDashboard() {
   useEffect(() => { checkSession(); }, [checkSession]);
   useEffect(() => { if (session.authenticated) loadRecords(); }, [session.authenticated, loadRecords]);
   useEffect(() => {
+    if (!session.authenticated) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") loadRecords();
+    };
+    const timer = window.setInterval(refresh, 15_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [session.authenticated, loadRecords]);
+  useEffect(() => {
     setTypeFilter(routedView.type);
     setStatusFilter(routedView.status);
     setSearch("");

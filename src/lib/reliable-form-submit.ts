@@ -16,11 +16,11 @@ interface ReliableFormSubmitInput {
 
 /**
  * Send each website enquiry through two independent channels:
- * 1) the site's own JSON/admin intake, and
+ * 1) the site's own persistent admin intake, and
  * 2) FormSubmit email delivery.
  *
- * A temporary failure in one channel must not incorrectly tell the visitor
- * that their enquiry was lost when the other channel accepted it.
+ * Admin persistence is the acknowledgement source. Email remains independent,
+ * but an email-only result must not be shown as an admin-panel success.
  */
 export async function submitWebsiteEnquiry(input: ReliableFormSubmitInput) {
   const [storageResult, emailResult] = await Promise.allSettled([
@@ -31,19 +31,16 @@ export async function submitWebsiteEnquiry(input: ReliableFormSubmitInput) {
   const storageAccepted = storageResult.status === "fulfilled" && storageResult.value;
   const emailAccepted = emailResult.status === "fulfilled";
 
-  if (!storageAccepted && !emailAccepted) {
+  if (!storageAccepted) {
     const emailReason = emailResult.status === "rejected" ? emailResult.reason : undefined;
     const storageReason = storageResult.status === "rejected" ? storageResult.reason : undefined;
-    console.error("Website enquiry could not be accepted by either delivery channel.", {
+    console.error("Website enquiry did not reach the admin intake.", {
       storageReason,
       emailReason,
     });
     throw new Error("Unable to submit enquiry.");
   }
 
-  if (!storageAccepted) {
-    console.warn("Enquiry email was accepted, but local admin persistence is queued/unavailable.");
-  }
   if (!emailAccepted) {
     console.warn("Enquiry was accepted by the admin intake, but the email notification failed.");
   }

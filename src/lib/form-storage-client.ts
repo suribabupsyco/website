@@ -39,7 +39,7 @@ function setPending(items: PendingSubmission[]) {
     else window.localStorage.setItem(PENDING_KEY, JSON.stringify(items.slice(-20)));
     return true;
   } catch {
-    // Local queue is only a fallback; primary persistence is the server JSON file.
+    // Local queue is only a fallback; primary persistence is server-side.
     return false;
   }
 }
@@ -56,7 +56,9 @@ async function postSubmission(payload: PendingSubmission) {
       signal: controller.signal,
       cache: "no-store",
     });
-    return response.ok;
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    if (!response.ok) throw new Error(body?.error || `Admin intake returned ${response.status}.`);
+    return true;
   } finally {
     window.clearTimeout(timeout);
   }
@@ -90,24 +92,11 @@ export async function saveFormSubmission(input: SaveSubmissionInput) {
     const saved = await postSubmission(payload);
     if (saved) return true;
   } catch {
-    // Preserve the existing FormSubmit flow and use two fallback mechanisms below.
+    // Preserve the existing FormSubmit flow and queue this request for retry below.
   }
 
-  // A beacon gets one more chance to reach the JSON API if the normal request times out.
-  let beaconAccepted = false;
-  try {
-    if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
-      beaconAccepted = navigator.sendBeacon(
-        "/api/form-submissions",
-        new Blob([JSON.stringify(payload)], { type: "application/json" })
-      );
-    }
-  } catch {
-    // The local queue below remains available for a later visit.
-  }
-
-  const queuedLocally = setPending([...getPending(), payload]);
-  // `true` means the enquiry is either saved already or safely accepted by a
-  // fallback channel for a later retry.
-  return beaconAccepted || queuedLocally;
+  // Keep a retry copy, but do not claim that browser-only data reached admin.
+  // The admin panel lives on the server and cannot read this visitor's queue.
+  setPending([...getPending(), payload]);
+  return false;
 }
