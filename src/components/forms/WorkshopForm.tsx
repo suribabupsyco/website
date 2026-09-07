@@ -5,8 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { workshopSchema } from "@/schemas/workshopSchema";
 import type { WorkshopFormValues } from "@/schemas/workshopSchema";
 import { cn, getTodayDate } from "@/lib/utils";
-import { saveFormSubmission } from "@/lib/form-storage-client";
-import { submitToFormSubmit } from "@/lib/form-submit-client";
+import { submitWebsiteEnquiry } from "@/lib/reliable-form-submit";
 import { useFormSuccessScroll } from "@/hooks/useFormSuccessScroll";
 import { formSubjects, successMessages } from "@/config/site";
 import { useState } from "react";
@@ -35,26 +34,27 @@ export const WorkshopForm = ({ onSuccess }: WorkshopFormProps) => {
         "community-organization": "Community Organization",
         other: "Other",
       };
-      await saveFormSubmission({
-        formType: "workshop",
-        formName: "Workshop / Training Form",
-        subject: formSubjects.workshop,
-        data,
-      });
-
-      await submitToFormSubmit({
-        _subject: formSubjects.workshop,
-        "Form Name": "Workshop / Training Form",
-        "Contact Person": data.contactPerson,
-        "Organization Name": data.organizationName,
-        "Mobile Number": data.phone,
-        "Email Address": data.email,
-        "Organization Type": orgTypeMap[data.organizationType],
-        "Program Interested": data.programInterested,
-        "Expected Participants": data.expectedParticipants?.toString() || "",
-        "Preferred Date": data.preferredDate || "",
-        Location: data.location,
-        Requirements: data.requirements,
+      await submitWebsiteEnquiry({
+        storage: {
+          formType: "workshop",
+          formName: "Workshop / Training Form",
+          subject: formSubjects.workshop,
+          data,
+        },
+        email: {
+          _subject: formSubjects.workshop,
+          "Form Name": "Workshop / Training Form",
+          "Contact Person": data.contactPerson,
+          "Organization Name": data.organizationName,
+          "Mobile Number": data.phone,
+          "Email Address": data.email,
+          "Organization Type": orgTypeMap[data.organizationType],
+          "Program Interested": data.programInterested,
+          "Expected Participants": data.expectedParticipants?.toString() || "",
+          "Preferred Date": data.preferredDate || "",
+          Location: data.location,
+          Requirements: data.requirements,
+        }
       });
 
       setSubmittedName(data.contactPerson);

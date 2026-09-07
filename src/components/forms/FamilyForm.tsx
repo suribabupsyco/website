@@ -5,8 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { familyCounsellingSchema } from "@/schemas/familyCounsellingSchema";
 import type { FamilyCounsellingFormValues } from "@/schemas/familyCounsellingSchema";
 import { cn } from "@/lib/utils";
-import { saveFormSubmission } from "@/lib/form-storage-client";
-import { submitToFormSubmit } from "@/lib/form-submit-client";
+import { submitWebsiteEnquiry } from "@/lib/reliable-form-submit";
 import { useFormSuccessScroll } from "@/hooks/useFormSuccessScroll";
 import { siteConfig, formSubjects, successMessages } from "@/config/site";
 import { useState } from "react";
@@ -27,23 +26,24 @@ export const FamilyForm = ({ onSuccess }: FamilyFormProps) => {
   const onSubmit = async (data: FamilyCounsellingFormValues) => {
     setSubmitStatus("sending");
     try {
-      await saveFormSubmission({
-        formType: "family",
-        formName: "Family Counselling Form",
-        subject: formSubjects.family,
-        data,
-      });
-
-      await submitToFormSubmit({
-        _subject: formSubjects.family,
-        "Form Name": "Family Counselling Form",
-        Name: data.name,
-        "Mobile Number": data.phone,
-        "Email Address": data.email || "",
-        "Primary Concern": data.primaryConcern,
-        "Family Members": data.familyMembers.toString(),
-        "Preferred Language": data.preferredLanguage,
-        Message: data.message,
+      await submitWebsiteEnquiry({
+        storage: {
+          formType: "family",
+          formName: "Family Counselling Form",
+          subject: formSubjects.family,
+          data,
+        },
+        email: {
+          _subject: formSubjects.family,
+          "Form Name": "Family Counselling Form",
+          Name: data.name,
+          "Mobile Number": data.phone,
+          "Email Address": data.email || "",
+          "Primary Concern": data.primaryConcern,
+          "Family Members": data.familyMembers.toString(),
+          "Preferred Language": data.preferredLanguage,
+          Message: data.message,
+        }
       });
 
       setSubmittedName(data.name);

@@ -5,8 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { careerCounsellingSchema } from "@/schemas/careerCounsellingSchema";
 import type { CareerCounsellingFormValues } from "@/schemas/careerCounsellingSchema";
 import { cn } from "@/lib/utils";
-import { saveFormSubmission } from "@/lib/form-storage-client";
-import { submitToFormSubmit } from "@/lib/form-submit-client";
+import { submitWebsiteEnquiry } from "@/lib/reliable-form-submit";
 import { useFormSuccessScroll } from "@/hooks/useFormSuccessScroll";
 import { formSubjects, successMessages } from "@/config/site";
 import { useState } from "react";
@@ -27,28 +26,29 @@ export const CareerForm = ({ onSuccess }: CareerFormProps) => {
   const onSubmit = async (data: CareerCounsellingFormValues) => {
     setSubmitStatus("sending");
     try {
-      await saveFormSubmission({
-        formType: "career",
-        formName: "Career Counselling Form",
-        subject: formSubjects.career,
-        data,
-      });
-
-      await submitToFormSubmit({
-        _subject: formSubjects.career,
-        "Form Name": "Career Counselling Form",
-        "Student Name": String(data.studentName),
-        "Parent Name": String(data.parentName || ""),
-        "Mobile Number": String(data.phone),
-        "Email Address": String(data.email || ""),
-        "Current Qualification": String(data.currentClass),
-        "School / College": String(data.schoolCollege),
-        "Career Area of Interest": String(data.careerArea || ""),
-        "Current Stream": String(data.currentStream || ""),
-        "Preferred Course": String(data.preferredCourse || ""),
-        "Career Concern": String(data.mainConcern || ""),
-        City: String(data.city || ""),
-        Message: String(data.message),
+      await submitWebsiteEnquiry({
+        storage: {
+          formType: "career",
+          formName: "Career Counselling Form",
+          subject: formSubjects.career,
+          data,
+        },
+        email: {
+          _subject: formSubjects.career,
+          "Form Name": "Career Counselling Form",
+          "Student Name": String(data.studentName),
+          "Parent Name": String(data.parentName || ""),
+          "Mobile Number": String(data.phone),
+          "Email Address": String(data.email || ""),
+          "Current Qualification": String(data.currentClass),
+          "School / College": String(data.schoolCollege),
+          "Career Area of Interest": String(data.careerArea || ""),
+          "Current Stream": String(data.currentStream || ""),
+          "Preferred Course": String(data.preferredCourse || ""),
+          "Career Concern": String(data.mainConcern || ""),
+          City: String(data.city || ""),
+          Message: String(data.message),
+        }
       });
 
       setSubmittedName(data.studentName);
@@ -79,7 +79,14 @@ export const CareerForm = ({ onSuccess }: CareerFormProps) => {
           <XCircle className="w-8 h-8 text-red-500" />
         </div>
         <h3 className="text-xl font-bold text-primary mb-3">Submission Failed</h3>
-        <p className="text-muted">Please try again or contact us directly.</p>
+        <p className="text-muted mb-5">Please try again or contact us directly.</p>
+        <button
+          type="button"
+          onClick={() => setSubmitStatus("idle")}
+          className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-primary/90"
+        >
+          Try Again
+        </button>
       </div>
     );
   }

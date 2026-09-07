@@ -5,8 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { appointmentSchema } from "@/schemas/appointmentSchema";
 import type { AppointmentFormValues } from "@/schemas/appointmentSchema";
 import { cn, getTodayDate, getWhatsAppLink } from "@/lib/utils";
-import { saveFormSubmission } from "@/lib/form-storage-client";
-import { submitToFormSubmit } from "@/lib/form-submit-client";
+import { submitWebsiteEnquiry } from "@/lib/reliable-form-submit";
 import { useFormSuccessScroll } from "@/hooks/useFormSuccessScroll";
 import { siteConfig, formSubjects, successMessages, errorMessages } from "@/config/site";
 import { useState } from "react";
@@ -48,29 +47,30 @@ export const AppointmentForm = ({ onSuccess, initialService = "individual-counse
   const onSubmit = async (data: AppointmentFormValues) => {
     setSubmitStatus("sending");
     try {
-      await saveFormSubmission({
-        formType: "appointment",
-        formName: "Appointment Form",
-        subject: formSubjects.appointment,
-        data,
-      });
-
-      await submitToFormSubmit({
-        _subject: formSubjects.appointment,
-        "Form Name": "Appointment Form",
-        "Full Name": data.fullName,
-        "Phone Number": data.phone,
-        "Email Address": data.email || "",
-        Age: data.age?.toString() || "",
-        Gender: data.gender || "",
-        "I am a": data.counsellingFor,
-        "Counselling For": data.counsellingFor,
-        "Preferred Language": data.preferredLanguage,
-        "Preferred Session Type": data.preferredSessionType,
-        "Preferred Date": data.preferredDate || "",
-        "Preferred Time": data.preferredTime || "",
-        "City / Location": data.cityLocation || "",
-        "Brief Message": data.briefMessage,
+      await submitWebsiteEnquiry({
+        storage: {
+          formType: "appointment",
+          formName: "Appointment Form",
+          subject: formSubjects.appointment,
+          data,
+        },
+        email: {
+          _subject: formSubjects.appointment,
+          "Form Name": "Appointment Form",
+          "Full Name": data.fullName,
+          "Phone Number": data.phone,
+          "Email Address": data.email || "",
+          Age: data.age?.toString() || "",
+          Gender: data.gender || "",
+          "I am a": data.counsellingFor,
+          "Counselling For": data.counsellingFor,
+          "Preferred Language": data.preferredLanguage,
+          "Preferred Session Type": data.preferredSessionType,
+          "Preferred Date": data.preferredDate || "",
+          "Preferred Time": data.preferredTime || "",
+          "City / Location": data.cityLocation || "",
+          "Brief Message": data.briefMessage,
+        }
       });
 
       setSubmittedName(data.fullName);
@@ -125,6 +125,16 @@ export const AppointmentForm = ({ onSuccess, initialService = "individual-counse
           Please try again or contact us directly.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <button
+            type="button"
+            onClick={() => setSubmitStatus("idle")}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium",
+              "border border-primary/20 bg-white text-primary hover:bg-primary/5"
+            )}
+          >
+            Try Again
+          </button>
           <a
             href={`tel:${siteConfig.phoneRaw}`}
             className={cn(

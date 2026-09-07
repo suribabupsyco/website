@@ -4,8 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { callbackSchema } from "@/schemas/callbackSchema";
 import type { CallbackFormValues } from "@/schemas/callbackSchema";
 import { cn } from "@/lib/utils";
-import { saveFormSubmission } from "@/lib/form-storage-client";
-import { submitToFormSubmit } from "@/lib/form-submit-client";
+import { submitWebsiteEnquiry } from "@/lib/reliable-form-submit";
 import { useFormSuccessScroll } from "@/hooks/useFormSuccessScroll";
 import { formSubjects, successMessages } from "@/config/site";
 import { X, CheckCircle } from "lucide-react";
@@ -27,20 +26,21 @@ export const CallbackModal = ({ isOpen, onClose }: CallbackModalProps) => {
   const onSubmit = async (data: CallbackFormValues) => {
     setSubmitStatus("sending");
     try {
-      await saveFormSubmission({
-        formType: "callback",
-        formName: "Callback Request Form",
-        subject: formSubjects.callback,
-        data,
-      });
-
-      await submitToFormSubmit({
-        _subject: formSubjects.callback,
-        "Form Name": "Callback Request Form",
-        Name: data.name,
-        "Phone Number": data.phone,
-        "Interested Service": data.interestedService,
-        "Preferred Callback Time": data.preferredCallbackTime,
+      await submitWebsiteEnquiry({
+        storage: {
+          formType: "callback",
+          formName: "Callback Request Form",
+          subject: formSubjects.callback,
+          data,
+        },
+        email: {
+          _subject: formSubjects.callback,
+          "Form Name": "Callback Request Form",
+          Name: data.name,
+          "Phone Number": data.phone,
+          "Interested Service": data.interestedService,
+          "Preferred Callback Time": data.preferredCallbackTime,
+        }
       });
 
       setSubmittedName(data.name);

@@ -5,8 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { studentCounsellingSchema } from "@/schemas/studentCounsellingSchema";
 import type { StudentCounsellingFormValues } from "@/schemas/studentCounsellingSchema";
 import { cn } from "@/lib/utils";
-import { saveFormSubmission } from "@/lib/form-storage-client";
-import { submitToFormSubmit } from "@/lib/form-submit-client";
+import { submitWebsiteEnquiry } from "@/lib/reliable-form-submit";
 import { useFormSuccessScroll } from "@/hooks/useFormSuccessScroll";
 import { formSubjects, successMessages } from "@/config/site";
 import { useState } from "react";
@@ -27,24 +26,25 @@ export const StudentForm = ({ onSuccess }: StudentFormProps) => {
   const onSubmit = async (data: StudentCounsellingFormValues) => {
     setSubmitStatus("sending");
     try {
-      await saveFormSubmission({
-        formType: "student",
-        formName: "Student Counselling Form",
-        subject: formSubjects.student,
-        data,
-      });
-
-      await submitToFormSubmit({
-        _subject: formSubjects.student,
-        "Form Name": "Student Counselling Form",
-        "Student Name": data.studentName,
-        Age: data.age || "",
-        "Current Class": data.currentClass,
-        "Parent / Guardian Name": data.parentName,
-        "Mobile Number": data.phone,
-        "Email Address": data.email || "",
-        "Primary Concern": data.primaryConcern,
-        Message: data.message,
+      await submitWebsiteEnquiry({
+        storage: {
+          formType: "student",
+          formName: "Student Counselling Form",
+          subject: formSubjects.student,
+          data,
+        },
+        email: {
+          _subject: formSubjects.student,
+          "Form Name": "Student Counselling Form",
+          "Student Name": data.studentName,
+          Age: data.age || "",
+          "Current Class": data.currentClass,
+          "Parent / Guardian Name": data.parentName,
+          "Mobile Number": data.phone,
+          "Email Address": data.email || "",
+          "Primary Concern": data.primaryConcern,
+          Message: data.message,
+        }
       });
 
       setSubmittedName(data.studentName);

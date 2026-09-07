@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-06T06:02:51.455Z",
+  "updatedAt": "2026-09-06T15:03:51.899Z",
   "clients": [
     {
       "fullName": "kusuma",
@@ -52,7 +52,7 @@
       "counsellingFor": "individual-counselling",
       "primaryConcern": "zxcvbqwert",
       "preferredLanguage": "english",
-      "preferredSessionType": "in-person",
+      "preferredSessionType": "In-person",
       "referralSource": "Website — Appointment Form",
       "assignedCounsellor": "",
       "status": "Active",
@@ -63,8 +63,40 @@
       "sourceSubmissionId": "969d08f3-0aad-4d51-b7aa-320ef2a47428",
       "id": "04b87072-deaa-48ce-aeee-c0f40bcf375a",
       "createdAt": "2026-09-06T02:54:35.677Z",
-      "updatedAt": "2026-09-06T06:02:51.407Z",
+      "updatedAt": "2026-09-06T14:48:25.533Z",
       "clientCode": "CHT-0002"
+    },
+    {
+      "fullName": "Venky",
+      "phone": "9381690958",
+      "alternatePhone": "",
+      "email": "venky200364@gmail.com",
+      "dateOfBirth": "",
+      "age": "21",
+      "gender": "male",
+      "occupationOrClass": "",
+      "schoolCollegeOrCompany": "",
+      "parentGuardianName": "",
+      "relationship": "",
+      "city": "Anakapalli",
+      "address": "",
+      "emergencyContact": "",
+      "counsellingFor": "individual-counselling",
+      "primaryConcern": "asdfgzxcvb",
+      "preferredLanguage": "english",
+      "preferredSessionType": "in-person",
+      "referralSource": "Website — Appointment Form",
+      "assignedCounsellor": "",
+      "status": "New",
+      "consent": "Received",
+      "tags": "appointment",
+      "documents": "",
+      "notes": "Created from website enquiry received 06 Sept 2026, 08:20 pm.",
+      "sourceSubmissionId": "6597d7c4-39dc-4a62-95ed-74db03b7c2ae",
+      "id": "39a174ed-340f-4878-a94c-e681899c1f6f",
+      "createdAt": "2026-09-06T14:54:20.009Z",
+      "updatedAt": "2026-09-06T14:54:20.009Z",
+      "clientCode": "CHT-0003"
     }
   ],
   "leads": [
@@ -74,7 +106,7 @@
       "email": "pkusuma4362@gmail.com",
       "source": "Website",
       "enquiryFor": "individual-counselling",
-      "preferredMode": "in-person",
+      "preferredMode": "In-person",
       "assignedTo": "",
       "stage": "Consultation booked",
       "priority": "Normal",
@@ -86,8 +118,29 @@
       "sourceSubmissionId": "969d08f3-0aad-4d51-b7aa-320ef2a47428",
       "id": "bcd44c2b-6971-4be8-b2b7-7590f7226923",
       "createdAt": "2026-09-06T06:02:51.429Z",
-      "updatedAt": "2026-09-06T06:02:51.429Z",
+      "updatedAt": "2026-09-06T14:48:25.556Z",
       "leadCode": "LEAD-0001"
+    },
+    {
+      "fullName": "Venky",
+      "phone": "9381690958",
+      "email": "venky200364@gmail.com",
+      "source": "Website",
+      "enquiryFor": "individual-counselling",
+      "preferredMode": "in-person",
+      "assignedTo": "",
+      "stage": "Contacted",
+      "priority": "Normal",
+      "nextFollowUp": "2026-09-07",
+      "estimatedValue": 0,
+      "city": "Anakapalli",
+      "notes": "Website intake • Appointment Form • received 2026-09-06T14:50:33.235Z • asdfgzxcvb",
+      "convertedClientId": "",
+      "sourceSubmissionId": "6597d7c4-39dc-4a62-95ed-74db03b7c2ae",
+      "id": "6c047854-357c-4b7b-842a-174235dbd9e2",
+      "createdAt": "2026-09-06T14:50:33.589Z",
+      "updatedAt": "2026-09-06T14:55:55.275Z",
+      "leadCode": "LEAD-0002"
     }
   ],
   "sessions": [],
@@ -106,7 +159,7 @@
       "clientName": "kusuma pentakota",
       "id": "5bfea385-7b26-4019-aa03-97fc9c3b638e",
       "createdAt": "2026-09-06T02:56:17.618Z",
-      "updatedAt": "2026-09-06T06:02:51.455Z",
+      "updatedAt": "2026-09-06T14:48:25.570Z",
       "sourceSubmissionId": "969d08f3-0aad-4d51-b7aa-320ef2a47428"
     }
   ],
@@ -120,7 +173,30 @@
   "inventory": [],
   "staff": [],
   "tasks": [],
-  "archives": [],
+  "archives": [
+    {
+      "archiveId": "e8fff96d-d5bd-47d4-b1c3-d0e91f33ebbb",
+      "collection": "communications",
+      "archivedAt": "2026-09-06T15:03:51.899Z",
+      "record": {
+        "clientId": "39a174ed-340f-4878-a94c-e681899c1f6f",
+        "communicationDate": "2026-09-06",
+        "communicationTime": "20:32",
+        "channel": "WhatsApp",
+        "direction": "Outgoing",
+        "purpose": "asdfg",
+        "staff": "asdfg",
+        "status": "Follow-up needed",
+        "nextActionDate": "2026-09-07",
+        "outcome": "asdfg",
+        "notes": "asdfg",
+        "clientName": "Venky",
+        "id": "c30e7293-1b42-4cf9-86ce-4a81d34b77f7",
+        "createdAt": "2026-09-06T15:03:17.220Z",
+        "updatedAt": "2026-09-06T15:03:17.220Z"
+      }
+    }
+  ],
   "activity": [
     {
       "id": "deb2492b-0d95-4320-9ba2-cd48f081cd73",
@@ -185,6 +261,86 @@
       "recordId": "5bfea385-7b26-4019-aa03-97fc9c3b638e",
       "label": "kusuma pentakota",
       "at": "2026-09-06T06:02:51.455Z"
+    },
+    {
+      "id": "67683cdf-8e23-4085-b33d-95405f632cb6",
+      "action": "updated",
+      "collection": "clients",
+      "recordId": "04b87072-deaa-48ce-aeee-c0f40bcf375a",
+      "label": "kusuma pentakota",
+      "at": "2026-09-06T14:48:25.534Z"
+    },
+    {
+      "id": "1fc5b578-a3f7-48ab-bd07-995102b8ffc5",
+      "action": "updated",
+      "collection": "leads",
+      "recordId": "bcd44c2b-6971-4be8-b2b7-7590f7226923",
+      "label": "kusuma pentakota",
+      "at": "2026-09-06T14:48:25.556Z"
+    },
+    {
+      "id": "3fb64a16-faf5-4397-884f-5e91d070723a",
+      "action": "updated",
+      "collection": "appointments",
+      "recordId": "5bfea385-7b26-4019-aa03-97fc9c3b638e",
+      "label": "kusuma pentakota",
+      "at": "2026-09-06T14:48:25.570Z"
+    },
+    {
+      "id": "999df03d-8e5e-4739-ae6d-eaad79e2a9ad",
+      "action": "created",
+      "collection": "leads",
+      "recordId": "6c047854-357c-4b7b-842a-174235dbd9e2",
+      "label": "Venky",
+      "at": "2026-09-06T14:50:33.590Z"
+    },
+    {
+      "id": "52a4bc18-6945-441c-ae57-daa43f46e8e7",
+      "action": "created",
+      "collection": "clients",
+      "recordId": "39a174ed-340f-4878-a94c-e681899c1f6f",
+      "label": "Venky",
+      "at": "2026-09-06T14:54:20.009Z"
+    },
+    {
+      "id": "74cc8148-6d0c-480d-a2cc-538332e1f646",
+      "action": "updated",
+      "collection": "leads",
+      "recordId": "6c047854-357c-4b7b-842a-174235dbd9e2",
+      "label": "Venky",
+      "at": "2026-09-06T14:54:21.287Z"
+    },
+    {
+      "id": "0035ed81-2e4e-46c1-b19a-be2a6246fa46",
+      "action": "updated",
+      "collection": "leads",
+      "recordId": "6c047854-357c-4b7b-842a-174235dbd9e2",
+      "label": "Venky",
+      "at": "2026-09-06T14:54:47.105Z"
+    },
+    {
+      "id": "63a5c5d0-bad9-4a30-bfd5-00e72e742433",
+      "action": "updated",
+      "collection": "leads",
+      "recordId": "6c047854-357c-4b7b-842a-174235dbd9e2",
+      "label": "Venky",
+      "at": "2026-09-06T14:55:55.275Z"
+    },
+    {
+      "id": "b5f70fe9-af51-4704-85ed-9866c5557fcf",
+      "action": "created",
+      "collection": "communications",
+      "recordId": "c30e7293-1b42-4cf9-86ce-4a81d34b77f7",
+      "label": "Venky",
+      "at": "2026-09-06T15:03:17.221Z"
+    },
+    {
+      "id": "ab85568f-e37d-4531-9ab7-17fde9e0a9f8",
+      "action": "archived",
+      "collection": "communications",
+      "recordId": "c30e7293-1b42-4cf9-86ce-4a81d34b77f7",
+      "label": "Venky",
+      "at": "2026-09-06T15:03:51.899Z"
     }
   ]
 }

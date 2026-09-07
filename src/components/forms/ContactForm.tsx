@@ -5,8 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { contactSchema } from "@/schemas/contactSchema";
 import type { ContactFormValues } from "@/schemas/contactSchema";
 import { cn } from "@/lib/utils";
-import { saveFormSubmission } from "@/lib/form-storage-client";
-import { submitToFormSubmit } from "@/lib/form-submit-client";
+import { submitWebsiteEnquiry } from "@/lib/reliable-form-submit";
 import { useFormSuccessScroll } from "@/hooks/useFormSuccessScroll";
 import { formSubjects, successMessages, errorMessages, privacyNote } from "@/config/site";
 import { useState } from "react";
@@ -37,21 +36,22 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
         institutional: "Institutional Program",
         other: "Other",
       };
-      await saveFormSubmission({
-        formType: "contact",
-        formName: "Contact Form",
-        subject: formSubjects.contact,
-        data,
-      });
-
-      await submitToFormSubmit({
-        _subject: formSubjects.contact,
-        "Form Name": "Contact Form",
-        "Full Name": data.fullName,
-        "Mobile Number": data.phone,
-        "Email Address": data.email || "",
-        Subject: subjectMap[data.subject] || "General Enquiry",
-        Message: data.message,
+      await submitWebsiteEnquiry({
+        storage: {
+          formType: "contact",
+          formName: "Contact Form",
+          subject: formSubjects.contact,
+          data,
+        },
+        email: {
+          _subject: formSubjects.contact,
+          "Form Name": "Contact Form",
+          "Full Name": data.fullName,
+          "Mobile Number": data.phone,
+          "Email Address": data.email || "",
+          Subject: subjectMap[data.subject] || "General Enquiry",
+          Message: data.message,
+        }
       });
 
       setSubmittedName(data.fullName);
@@ -84,7 +84,14 @@ export const ContactForm = ({ onSuccess }: ContactFormProps) => {
         <h3 className="text-xl font-bold text-primary mb-3">
           {errorMessages.submit}
         </h3>
-        <p className="text-muted">Please try again or call us directly.</p>
+        <p className="text-muted mb-5">Please try again or call us directly.</p>
+        <button
+          type="button"
+          onClick={() => setSubmitStatus("idle")}
+          className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-primary/90"
+        >
+          Try Again
+        </button>
       </div>
     );
   }

@@ -33,18 +33,21 @@ function getPending(): PendingSubmission[] {
 }
 
 function setPending(items: PendingSubmission[]) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return false;
   try {
     if (items.length === 0) window.localStorage.removeItem(PENDING_KEY);
     else window.localStorage.setItem(PENDING_KEY, JSON.stringify(items.slice(-20)));
+    return true;
   } catch {
     // Local queue is only a fallback; primary persistence is the server JSON file.
+    return false;
   }
 }
 
 async function postSubmission(payload: PendingSubmission) {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 2500);
+  // Allow enough time for a cold-started Next.js server/API route to respond.
+  const timeout = window.setTimeout(() => controller.abort(), 8000);
   try {
     const response = await fetch("/api/form-submissions", {
       method: "POST",
@@ -90,10 +93,11 @@ export async function saveFormSubmission(input: SaveSubmissionInput) {
     // Preserve the existing FormSubmit flow and use two fallback mechanisms below.
   }
 
-  // A beacon gets one more chance to reach the JSON API while FormSubmit navigates away.
+  // A beacon gets one more chance to reach the JSON API if the normal request times out.
+  let beaconAccepted = false;
   try {
     if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
-      navigator.sendBeacon(
+      beaconAccepted = navigator.sendBeacon(
         "/api/form-submissions",
         new Blob([JSON.stringify(payload)], { type: "application/json" })
       );
@@ -102,6 +106,8 @@ export async function saveFormSubmission(input: SaveSubmissionInput) {
     // The local queue below remains available for a later visit.
   }
 
-  setPending([...getPending(), payload]);
-  return false;
+  const queuedLocally = setPending([...getPending(), payload]);
+  // `true` means the enquiry is either saved already or safely accepted by a
+  // fallback channel for a later retry.
+  return beaconAccepted || queuedLocally;
 }
