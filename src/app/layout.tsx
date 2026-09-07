@@ -8,6 +8,7 @@ import { absoluteUrl, serializeJsonLd, SITE_URL } from "@/lib/seo";
 import OpeningIntro from "@/components/common/OpeningIntro";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import PendingSubmissionRecovery from "@/components/common/PendingSubmissionRecovery";
+import { Analytics } from "@vercel/analytics/next";
 import logo from "../../logo-green.png";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-body", display: "swap" });
@@ -128,6 +129,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <PendingSubmissionRecovery />
         <OpeningIntro />
         {children}
+        <Analytics />
       </body>
     </html>
   );
