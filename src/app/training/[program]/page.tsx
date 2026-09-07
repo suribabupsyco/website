@@ -6,6 +6,7 @@ import PageWrapper from "@/components/layouts/PageWrapper";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { PageHero } from "@/components/ui/PageHero";
 import { trainingPrograms } from "@/data/trainingData";
+import { createPageMetadata } from "@/lib/seo";
 
 interface ProgramPageProps { params: Promise<{ program: string }> }
 
@@ -16,8 +17,12 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: ProgramPageProps): Promise<Metadata> {
   const { program } = await params;
   const item = trainingPrograms.find((entry) => entry.slug === program);
-  if (!item) return { title: "Training Program Not Found" };
-  return { title: `${item.title} | Chetana`, description: item.description };
+  if (!item) return { title: "Training Program Not Found", robots: { index: false, follow: false } };
+  return createPageMetadata({
+    title: item.title,
+    description: item.description,
+    path: `/training/${item.slug}`,
+  });
 }
 
 export default async function TrainingProgramPage({ params }: ProgramPageProps) {

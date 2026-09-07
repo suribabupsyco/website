@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://chetanacounselling.in/sitemap.xml

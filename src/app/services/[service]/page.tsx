@@ -9,13 +9,20 @@ import { AppointmentCTA } from "@/components/home/AppointmentCTA";
 import { services, servicesData } from "@/data/servicesData";
 import { siteConfig } from "@/config/site";
 import { parentGuidanceContent } from "@/data/brochureContent";
+import { createPageMetadata } from "@/lib/seo";
 
 interface ServicePageProps { params: Promise<{ service: string }> }
 
 export async function generateMetadata({ params }: ServicePageProps): Promise<Metadata> {
   const { service } = await params;
   const svc = services[service];
-  return svc ? { title: svc.seo.title, description: svc.seo.description } : { title: "Service Not Found" };
+  return svc
+    ? createPageMetadata({
+        title: svc.seo.title.replace(/\s*\|\s*Chetana.*$/, ""),
+        description: svc.seo.description,
+        path: `/services/${svc.slug}`,
+      })
+    : { title: "Service Not Found", robots: { index: false, follow: false } };
 }
 
 export async function generateStaticParams() {

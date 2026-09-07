@@ -4,11 +4,25 @@ import { ArrowLeft, CalendarDays, Clock3, MessageCircle } from "lucide-react";
 import PageWrapper from "@/components/layouts/PageWrapper";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { blogData } from "@/data/blogData";
+import { createPageMetadata } from "@/lib/seo";
 
 interface BlogPostPageProps { params: Promise<{ slug: string }> }
 export const dynamic = "force-static";
 export async function generateStaticParams() { return blogData.map((post) => ({ slug: post.slug })); }
-export async function generateMetadata({ params }: BlogPostPageProps) { const { slug } = await params; const post = blogData.find((item) => item.slug === slug); return post ? { title: post.title, description: post.excerpt } : { title: "Article Not Found" }; }
+export async function generateMetadata({ params }: BlogPostPageProps) {
+  const { slug } = await params;
+  const post = blogData.find((item) => item.slug === slug);
+  return post
+    ? createPageMetadata({
+        title: post.title,
+        description: post.excerpt,
+        path: `/blog/${post.slug}`,
+        type: "article",
+        publishedTime: `${post.publishedAt}T00:00:00+05:30`,
+        authors: ["Mr. Suri Babu Saragadam"],
+      })
+    : { title: "Article Not Found", robots: { index: false, follow: false } };
+}
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;

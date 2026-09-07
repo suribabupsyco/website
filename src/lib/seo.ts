@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 
-export const SITE_URL = "https://chetanacounselling.in";
+export const SITE_URL = "https://chetana-psychological-counseling-centre.com";
 export const SITE_NAME = siteConfig.businessName;
+export const SOCIAL_IMAGE_URL = `${SITE_URL}/opengraph-image`;
 
 interface PageMetadataOptions {
   title: string;
@@ -41,12 +42,14 @@ export function createPageMetadata({
       title,
       description,
       url: canonical,
+      images: [{ url: SOCIAL_IMAGE_URL, width: 1200, height: 630, alt: `${SITE_NAME} — professional counselling and guidance` }],
       ...(type === "article" ? { publishedTime, authors } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [SOCIAL_IMAGE_URL],
     },
   };
 }

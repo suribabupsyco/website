@@ -4,7 +4,7 @@ import { Inter, Manrope } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { siteConfig } from "@/config/site";
-import { absoluteUrl, serializeJsonLd, SITE_URL } from "@/lib/seo";
+import { absoluteUrl, serializeJsonLd, SITE_URL, SOCIAL_IMAGE_URL } from "@/lib/seo";
 import OpeningIntro from "@/components/common/OpeningIntro";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import PendingSubmissionRecovery from "@/components/common/PendingSubmissionRecovery";
@@ -33,13 +33,13 @@ export const metadata: Metadata = {
     title: siteConfig.seo.title,
     description: siteConfig.seo.description,
     url: "/",
-    images: [{ url: logo.src, width: logo.width, height: logo.height, alt: `${siteConfig.businessName} logo` }],
+    images: [{ url: SOCIAL_IMAGE_URL, width: 1200, height: 630, alt: `${siteConfig.businessName} — professional counselling and guidance` }],
   },
   twitter: {
     card: "summary_large_image",
     title: siteConfig.seo.title,
     description: siteConfig.seo.description,
-    images: [logo.src],
+    images: [SOCIAL_IMAGE_URL],
   },
   robots: {
     index: true,

@@ -3,6 +3,13 @@ import PageWrapper from "@/components/layouts/PageWrapper";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { PageHero } from "@/components/ui/PageHero";
 import { siteConfig } from "@/config/site";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Terms & Conditions",
+  description: "Terms for using the Chetana Psychological Counselling Centre website and submitting counselling or training enquiries.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

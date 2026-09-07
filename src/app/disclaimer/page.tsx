@@ -1,6 +1,13 @@
 import PageWrapper from "@/components/layouts/PageWrapper";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { PageHero } from "@/components/ui/PageHero";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Disclaimer",
+  description: "Important information about the educational content, counselling guidance and services described on the Chetana website.",
+  path: "/disclaimer",
+});
 
 export default function DisclaimerPage() {
   return (
